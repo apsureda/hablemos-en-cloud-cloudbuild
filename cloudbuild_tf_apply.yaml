@@ -14,10 +14,11 @@ steps:
 # Ejecutar el plan Terraform
 - name: gcr.io/$PROJECT_ID/terraform
   entrypoint: 'bash'
+  dir: '/workspace/terraform'
   args:
   - '-c'
   - |
-    terraform init
+    terraform init 
     terraform apply /workspace/tf_plan.bin
 
 timeout: 20m
