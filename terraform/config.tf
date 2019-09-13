@@ -4,7 +4,7 @@
  * agreement with Google.  
  */
 provider "google" {
-  version = "~> 2.5.0"
+  version = "~> 2.5"
   project = "${var.project}"
 }
 
