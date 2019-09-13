@@ -3,10 +3,10 @@
  * or representation for any use or purpose. Your use of it is subject to your 
  * agreement with Google.  
  */
- resource "google_compute_instance" "bastion" {
-  name                    = "bastion-host"
-  machine_type            = "n1-standard-1"
-  zone                    = "${local.vm_zone}"
+resource "google_compute_instance" "bastion" {
+  name         = "bastion-host"
+  machine_type = "n1-standard-1"
+  zone         = "${local.vm_zone}"
 
   boot_disk {
     initialize_params {
@@ -15,7 +15,7 @@
   }
 
   network_interface {
-    subnetwork    = "${google_compute_subnetwork.sample_zone.self_link}"
+    subnetwork = "${google_compute_subnetwork.sample_zone.self_link}"
   }
 
   metadata = {
@@ -24,7 +24,7 @@
 }
 
 data "google_compute_zones" "zones" {
-  region  = "${var.region}"
+  region = "${var.region}"
 }
 
 locals {
