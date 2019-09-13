@@ -1,0 +1,90 @@
+steps:
+
+# Desencriptar la clave privada utilizada para autenticarse en GitHub.
+# https://help.github.com/en/articles/adding-a-new-ssh-key-to-your-github-account
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - kms
+  - decrypt
+  - --ciphertext-file=conf/id_rsa.enc
+  - --plaintext-file=/root/.ssh/id_rsa
+  - --location=global
+  - --keyring=cloudbuild-secrets
+  - --key=cloudbuild-key
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+
+# Configurar el cliente git para que use nuestra clave privada.
+- name: 'ubuntu'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    chmod 600 /root/.ssh/id_rsa
+    cat <<EOF >/root/.ssh/config
+    Hostname github.com
+     IdentityFile /root/.ssh/id_rsa
+    EOF
+    cp conf/known_hosts /root/.ssh/known_hosts
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+
+# Configurar git, clonar el repositorio en un directorio temporal y pasar a la
+# rama que ha iniciado el build.
+- name: 'gcr.io/cloud-builders/git'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    git config --global user.email "${_GIT_MAIL}"
+    git config --global user.name "${_GIT_USER}"
+    git clone ${_GIT_REPO} /workspace/tmp-requests
+    git -C /workspace/tmp-requests checkout $BRANCH_NAME
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+
+# Inicializar terraform y lanzar un polan sobre el directorio que contiene la
+# configuración terraform.
+# Guardamos la salida del comando plan para incluirla en el commit que haremos
+# después.
+# También guardamos el plan generado para ejecutarlo después si el cambio es validado.
+- name: gcr.io/$PROJECT_ID/terraform
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    terraform init /workspace/tmp-requests/terraform
+    terraform plan -no-color -input=false \
+    -var-file=/workspace/tmp-requests/terraform/params.tfvars \
+    -var project=$PROJECT_ID \
+    -out=/workspace/tmp-requests/tf_plan.bin \
+    /workspace/tmp-requests/terraform > /workspace/terraform_output.txt
+
+# El plan generado por terraform puede contener información sensible. Lo
+# encriptamos antes de subirlo a git.
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - kms
+  - encrypt
+  - --plaintext-file=/workspace/tmp-requests/tf_plan.bin
+  - --ciphertext-file=/workspace/tmp-requests/tf_plan.enc
+  - --location=global
+  - --keyring=cloudbuild-secrets
+  - --key=cloudbuild-key
+
+# Añadir el resultado del plan a la rama git para su validación.
+- name: 'gcr.io/cloud-builders/git'
+  entrypoint: 'bash'
+  dir: '/workspace/tmp-requests'
+  args:
+  - '-c'
+  - |
+    git add tf_plan.enc
+    git commit --author="${_GIT_USER} <${_GIT_MAIL}>" --file=/workspace/terraform_output.txt
+    git push -u origin $BRANCH_NAME
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh

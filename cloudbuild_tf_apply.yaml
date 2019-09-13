@@ -1,0 +1,27 @@
+steps:
+
+# decrypt the terraform plan
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - kms
+  - decrypt
+  - --ciphertext-file=/workspace/tf_plan.enc
+  - --plaintext-file=/workspace/tf_plan.bin
+  - --location=global
+  - --keyring=cloudbuild-secrets
+  - --key=cloudbuild-key
+
+# initialize the terraform environment
+- name: gcr.io/$PROJECT_ID/terraform
+  args:
+  - init
+  - terraform
+
+# apply the terraform changes
+- name: gcr.io/$PROJECT_ID/terraform
+  args:
+  - apply
+  - -input=false
+  - /workspace/tf_plan.bin
+
+timeout: 20m
