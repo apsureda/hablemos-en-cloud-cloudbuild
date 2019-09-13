@@ -8,8 +8,6 @@ resource "google_compute_instance" "bastion" {
   machine_type = "n1-standard-1"
   zone         = "${local.vm_zone}"
 
-  tags = ["bastion"]
-
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-9"
