@@ -14,8 +14,6 @@ resource "google_compute_instance" "bastion" {
     }
   }
 
-  tags = ["bastion"]
-
   network_interface {
     subnetwork = "${google_compute_subnetwork.sample_zone.self_link}"
   }
