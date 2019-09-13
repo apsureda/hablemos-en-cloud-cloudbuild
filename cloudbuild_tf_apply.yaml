@@ -13,6 +13,7 @@ steps:
 
 # Ejecutar el plan Terraform
 - name: gcr.io/$PROJECT_ID/terraform
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
