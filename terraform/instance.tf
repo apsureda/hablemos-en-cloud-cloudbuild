@@ -10,6 +10,10 @@ resource "google_compute_instance" "bastion" {
 
   tags = ["bastion"]
 
+  labels = {
+    entorno = "produccion"
+  }
+
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-9"
